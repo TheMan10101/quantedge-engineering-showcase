@@ -66,3 +66,17 @@ The repository demonstrates engineering experience and project scope without dis
 ---
 
 **Project Focus:** Python · Data Engineering · Statistical Research · Software Reliability · AI-Assisted Development
+
+## Conceptual Data Pipeline
+
+```mermaid
+flowchart TD
+    A[Historical Time-Series Data] --> B[Data Ingestion]
+    B --> C[Data Validation]
+    C --> D[Data Processing]
+    D --> E[Statistical Analysis]
+    E --> F[Reporting and Visualization]
+    F --> G[Human Review]
+```
+
+*Illustrative architecture. Proprietary implementation details are excluded.*
