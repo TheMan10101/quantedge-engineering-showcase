@@ -1,4 +1,6 @@
 # QuantEdge
+[![Python Validation Tests](https://github.com/TheMan10101/quantedge-engineering-showcase/actions/workflows/python-tests.yml/badge.svg)](https://github.com/TheMan10101/quantedge-engineering-showcase/actions/workflows/python-tests.yml)
+
 ### Python Data Engineering | Time-Series Analytics | AI-Assisted Engineering
 
 **Independent Engineering & Research Project**
