@@ -1,4 +1,3 @@
-
 name: Python Validation Tests
 
 on:
@@ -11,22 +10,24 @@ permissions:
 
 jobs:
   test:
-    name: Time-Series Validation
+    name: Synthetic time-series validation
     runs-on: ubuntu-latest
-
     steps:
-      - name: Checkout repository
+      - name: Checkout
         uses: actions/checkout@v6
         with:
           persist-credentials: false
-
       - name: Set up Python
         uses: actions/setup-python@v6
         with:
           python-version: '3.12'
-
-      - name: Run synthetic demonstration
+      - name: Install public demo dependencies
+        run: python -m pip install -r requirements-demo.txt
+      - name: Run standard library demo
         run: python demo_time_series.py
-
-      - name: Run automated unit tests
+      - name: Run pandas demo
+        run: python demo_pandas.py
+      - name: Run standard library tests
         run: python -m unittest discover -v
+      - name: Run pytest suite
+        run: python -m pytest -q
