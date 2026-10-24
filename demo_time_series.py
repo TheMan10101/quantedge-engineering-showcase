@@ -13,7 +13,8 @@ import json
 import math
 import time
 import tracemalloc
-from statistics import mean
+from statistics import fmean
+from typing import TypedDict
 
 
 @dataclass(frozen=True)
@@ -70,17 +71,34 @@ def make_large_synthetic_readings(count: int) -> list[Reading]:
     ]
 
 
+class ValidationReport(TypedDict):
+    received_records: int
+    valid_records: int
+    duplicate_records: int
+    exact_duplicate_records: int
+    conflicting_duplicate_records: int
+    conflicting_timestamps: int
+    missing_intervals: int
+    missing_values: int
+    invalid_values: int
+    outside_window: int
+    mean_valid_value: float | None
+
+
 def validate_readings(
     readings: list[Reading],
     start: datetime,
     intervals: int,
     minutes: int = 5,
     min_valid: float | None = 0.0,
-) -> dict[str, int | float | None]:
+) -> ValidationReport:
     """Report quality without mutating input; quarantine conflicting duplicates.
 
     A missing interval has no timestamp at all. A conflicting timestamp exists,
     but is excluded from valid statistics rather than arbitrarily choosing one.
+
+    Conflicting duplicate record counts include out-of-window records;
+    conflicting_timestamps counts distinct conflicts inside the window.
     """
     start_utc = _utc(start)
     if (
@@ -134,7 +152,7 @@ def validate_readings(
         "missing_values": missing_values,
         "invalid_values": invalid_values,
         "outside_window": outside_window,
-        "mean_valid_value": round(mean(values), 2) if values else None,
+        "mean_valid_value": round(fmean(values), 2) if values else None,
     }
 
 
@@ -143,20 +161,39 @@ def main() -> None:
     parser.add_argument("--benchmark", type=int, metavar="N", default=None,
                         help="Generate N deterministic synthetic records and measure validation")
     args = parser.parse_args()
+    if args.benchmark is not None and args.benchmark <= 0:
+        parser.error("--benchmark must be a positive integer")
     start = datetime(2026, 1, 1, tzinfo=timezone.utc)
     if args.benchmark is None:
         print(json.dumps(validate_readings(make_synthetic_readings(), start, 12), indent=2))
     else:
-        tracemalloc.start()
+        # Generate input before either measurement; input creation is not timed.
         readings = make_large_synthetic_readings(args.benchmark)
+
+        # Pass 1: time validation without tracemalloc instrumentation.
         start_time = time.perf_counter()
         report = validate_readings(readings, start, args.benchmark)
         seconds = time.perf_counter() - start_time
-        _, peak_bytes = tracemalloc.get_traced_memory()
-        tracemalloc.stop()
-        print(json.dumps({"synthetic": True, "validation_seconds": round(seconds, 3),
-                          "peak_traced_mebibytes": round(peak_bytes / (1024 ** 2), 1),
-                          "report": report}, indent=2))
+
+        # Pass 2: separately measure Python-traced allocations during validation.
+        # Existing input objects were allocated before tracing began, so their
+        # already-allocated memory is not part of this metric.
+        tracemalloc.start()
+        try:
+            memory_report = validate_readings(readings, start, args.benchmark)
+            _, peak_bytes = tracemalloc.get_traced_memory()
+        finally:
+            tracemalloc.stop()
+        if memory_report != report:
+            raise RuntimeError("Benchmark validation passes produced different reports")
+
+        print(json.dumps({
+            "synthetic": True,
+            "validation_seconds_untraced": round(seconds, 3),
+            "validation_peak_traced_mebibytes": round(peak_bytes / (1024 ** 2), 1),
+            "memory_scope": "Python-traced allocations during separate validation; excludes input creation",
+            "report": report,
+        }, indent=2))
 
 
 if __name__ == "__main__":
