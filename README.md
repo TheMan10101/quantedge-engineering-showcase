@@ -36,7 +36,7 @@ python -m pytest -q
 python demo_time_series.py --benchmark 250000
 ```
 
-The benchmark uses generated values, not private financial data. It prints elapsed validation time and Python-traced peak memory; numbers depend on the computer and are **not a production-performance guarantee**.
+The benchmark validates 250,000 newly generated synthetic records, not the private historical dataset. It runs validation twice: first to measure execution time without memory tracing, and then to measure Python-traced allocations during a separate validation pass. Input generation is excluded from timing and tracing. The reported memory is **not total process memory**. Results vary by machine and are **not a production-performance guarantee**.
 
 ### Example output
 

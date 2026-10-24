@@ -43,6 +43,18 @@ class TestTimeSeriesValidation(unittest.TestCase):
         self.assertIsNone(report["mean_valid_value"])
         self.assertEqual(samples[0].value, 10.)  # Source data untouched.
 
+    def test_conflict_counter_scopes(self):
+        outside = START + timedelta(hours=1)
+        report = validate_readings([
+            Reading(START, 10.0),
+            Reading(START, 11.0),
+            Reading(outside, 20.0),
+            Reading(outside, 21.0),
+        ], START, intervals=1)
+        self.assertEqual(report["conflicting_duplicate_records"], 2)
+        self.assertEqual(report["conflicting_timestamps"], 1)
+        self.assertEqual(report["outside_window"], 1)
+
     def test_conflict_with_none(self):
         report = validate_readings([Reading(START, None), Reading(START, 5.)], START, 1)
         self.assertEqual(report["conflicting_timestamps"], 1)
